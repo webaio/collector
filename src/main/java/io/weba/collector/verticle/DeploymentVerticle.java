@@ -5,7 +5,7 @@ import io.weba.collector.Constants;
 
 public class DeploymentVerticle extends AbstractVerticle {
     public static void main(String[] args) {
-        System.out.print("This is vert.x application. You can run it from CLI. See more information in readme.md.");
+        System.out.print("This is vert.x application. You can run it from CLI. See more information in README.md.");
     }
 
     @Override
