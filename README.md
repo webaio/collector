@@ -7,7 +7,7 @@ Collector is a part of Weba.IO application responsible for collecting incoming h
 
 To run collector:
 
-1. /gradlew clean
+1. ./gradlew clean
 2. ./gradlew build
 3. ./gradlew shadowJar
 4. vertx run io.weba.collector.verticle.DeploymentVerticle -cp build/libs/io.weba.collector-fat.jar -conf resources/config.json

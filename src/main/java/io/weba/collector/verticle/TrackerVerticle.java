@@ -16,8 +16,6 @@ import io.vertx.ext.web.handler.BodyHandler;
 import io.vertx.ext.web.handler.CookieHandler;
 import io.weba.collector.Constants;
 import io.weba.collector.collector.Collector;
-import io.weba.collector.web.handler.CollectorHandler;
-import io.weba.collector.web.handler.VisitorIdentityHandler;
 
 import java.time.Duration;
 import java.util.Objects;
@@ -30,7 +28,7 @@ public class TrackerVerticle extends AbstractVerticle {
     private Collector collector = new Collector();
 
     public static void main(String[] args) {
-        System.out.print("This is vert.x application. You can run it from CLI. See more information in README.md.");
+        System.out.print("This is vert.x application. You can run it from CLI. See more information in readme.md.");
     }
 
     @Override
@@ -59,12 +57,41 @@ public class TrackerVerticle extends AbstractVerticle {
     private Router createRouter() {
         router = Router.router(vertx);
         router.route().handler(CookieHandler.create());
-        router.route().handler(VisitorIdentityHandler.create());
+        router.route().handler(requestHandler -> {
+            UUID uuid;
+            try {
+                Cookie vid = requestHandler.getCookie("vid");
+                uuid = UUID.fromString(Objects.isNull(vid) ? "" : vid.getValue());
+            } catch (IllegalArgumentException ex) {
+                uuid = UUID.randomUUID();
+            }
+
+            Cookie cookie = Cookie.cookie("vid", uuid.toString())
+                    .setHttpOnly(true)
+                    .setSecure(false)
+                    .setMaxAge(Duration.ofDays(365).getSeconds());
+
+            requestHandler.addCookie(cookie);
+            requestHandler.next();
+        });
 
         // collect route
         Route collectRoute = router.route(HttpMethod.GET, "/collect");
         collectRoute.handler(BodyHandler.create());
-        collectRoute.handler(CollectorHandler.create(collector, kafkaProducerService));
+        collectRoute.handler(requestHandler -> {
+            final HttpServerRequest request = requestHandler.request();
+            final HttpServerResponse response = request.response();
+
+            kafkaProducerService.sendString(new StringKafkaMessage(collector.collect(requestHandler)), result -> {
+                if (result.succeeded()) {
+                    response.setStatusCode(204);
+                } else {
+                    response.setStatusCode(503);
+                }
+
+                response.end();
+            });
+        });
 
         return router;
     }
